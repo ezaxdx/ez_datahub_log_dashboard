@@ -138,7 +138,7 @@ DATA_SOURCE_MODE = "REST_API"
 API_VERIFY_SSL = False
 
 # 운영 서버 Base URL (끝에 / 없이)
-API_BASE_URL = "https://apitest.ezpmp.co.kr:8443/v1/micedx-prod"
+API_BASE_URL = "http://221.148.122.133:31692"
 
 # 각 엔드포인트 경로 (path만, Base URL 제외)
 API_ENDPOINT_USERS    = "/admin/user/evaluation/get"          # GET  직원정보 전체 조회

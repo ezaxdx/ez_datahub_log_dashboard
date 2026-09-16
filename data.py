@@ -315,8 +315,8 @@ def _build_proposal_df(records: list) -> pd.DataFrame:
             continue
 
         # TODO: API가 send 타입 반환 시 아래 주석 해제
-        # if r.get("type") != "send":
-        #     continue
+        if r.get("type") != "send":
+            continue
         if r.get("resultYn") != "성공":
             continue
         if not prs_id:
