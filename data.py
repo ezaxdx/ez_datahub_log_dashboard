@@ -12,6 +12,11 @@ try:
 except Exception:
     pass
 
+try:
+    import discord_utils as _discord
+except ImportError:
+    _discord = None
+
 # --- [load 블록] ---
 
 def _get_api_headers():
@@ -85,6 +90,24 @@ def _paginate(endpoint_path, method="POST", payload=None, label=""):
                 print(_msg)
                 try: st.warning(_msg)
                 except: pass
+                if _discord:
+                    if resp.status_code == 401:
+                        _discord.send_error(
+                            f"API 인증 토큰이 만료되었습니다.\n엔드포인트: {url}\n\n"
+                            "▶ .streamlit/secrets.toml [api] token 을 새 토큰으로 교체하세요.",
+                            context=f"data.py — {label} 401 Unauthorized"
+                        )
+                    elif resp.status_code >= 500:
+                        _discord.send_error(
+                            f"API 서버 오류 (HTTP {resp.status_code})\n엔드포인트: {url}\n\n"
+                            "▶ 서버 상태를 확인하세요.",
+                            context=f"data.py — {label} {resp.status_code} Server Error"
+                        )
+                    else:
+                        _discord.send_error(
+                            f"API 오류 (HTTP {resp.status_code})\n엔드포인트: {url}",
+                            context=f"data.py — {label}"
+                        )
                 break
 
             j = resp.json()
@@ -119,6 +142,19 @@ def _paginate(endpoint_path, method="POST", payload=None, label=""):
             print(_msg)
             try: st.warning(_msg)
             except: pass
+            if _discord:
+                import requests as _req
+                if isinstance(e, (_req.exceptions.ConnectionError, _req.exceptions.Timeout)):
+                    _discord.send_error(
+                        f"API 서버에 접속할 수 없습니다.\n엔드포인트: {url}\n오류: {e}\n\n"
+                        "▶ 서버 네트워크 상태를 확인하세요.",
+                        context=f"data.py — {label} 접속 불가"
+                    )
+                else:
+                    _discord.send_error(
+                        f"API 호출 중 예외 발생\n엔드포인트: {url}\n오류: {e}",
+                        context=f"data.py — {label}"
+                    )
             break
 
     return all_records
@@ -891,5 +927,24 @@ def run_all():
     df_login = add_rank_group(df_login)
     df_download = add_rank_group(df_download)
     df_proposal = add_rank_group(df_proposal)
+
+    # 데이터 0건 감지 — 평일 업무 시간(9~18시)에 전부 비어있으면 경보
+    if _discord:
+        from datetime import datetime as _dt
+        _now = _dt.now()
+        _is_weekday_hours = _now.weekday() < 5 and 9 <= _now.hour < 18
+        if _is_weekday_hours:
+            _empty = {
+                "직원정보": df_users.empty,
+                "로그인": df_login.empty,
+                "다운로드": df_download.empty,
+            }
+            _empty_list = [k for k, v in _empty.items() if v]
+            if _empty_list:
+                _discord.send_error(
+                    f"API는 응답했지만 데이터가 0건입니다.\n비어있는 항목: {', '.join(_empty_list)}\n\n"
+                    "▶ API 서버 데이터 상태를 확인하세요.",
+                    context="data.py — run_all() 0건 감지"
+                )
 
     return df_users, df_login, df_download, df_proposal
